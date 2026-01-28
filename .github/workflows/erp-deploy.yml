@@ -1,0 +1,36 @@
+name: Deploy ERP
+
+on:
+  repository_dispatch:
+    types: [deploy]
+
+concurrency:
+  group: erp-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Contabo VM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        run: |
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
+            cd /opt/erp-system
+
+            echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+
+            docker compose pull
+            docker compose up -d
+          EOF
