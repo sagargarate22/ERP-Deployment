@@ -33,7 +33,7 @@ jobs:
             git pull origin main
             
             echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
-
+            docker-compose down
             docker-compose pull
             docker-compose up -d
           EOF
