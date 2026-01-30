@@ -28,7 +28,7 @@ jobs:
       - name: Deploy via SSH
         run: |
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
-            cd /opt/erp-system
+            cd /opt/erp-system/ERP-Deployment
 
             git pull origin main
             
