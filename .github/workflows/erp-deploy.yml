@@ -30,8 +30,10 @@ jobs:
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
             cd /opt/erp-system
 
+            git pull origin main
+            
             echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
 
-            docker compose pull
-            docker compose up -d
+            docker-compose pull
+            docker-compose up -d
           EOF
