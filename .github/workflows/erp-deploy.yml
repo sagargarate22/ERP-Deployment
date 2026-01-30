@@ -1,8 +1,9 @@
 name: Deploy ERP
 
 on:
-  repository_dispatch:
-    types: [deploy]
+  push:
+    branches:
+      - "main"
 
 concurrency:
   group: erp-deployment
