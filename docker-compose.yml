@@ -1,4 +1,46 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: backend_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-backend_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - erp-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: backend_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - erp-network
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    
+  redis:
+    image: redis:7-alpine
+    container_name: backend_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - erp-network
+
   getway:
     image: nginx:latest
     ports:
@@ -8,6 +50,8 @@ services:
     depends_on:
       - frontend
       - backend
+    networks:
+      - erp-network
   
   frontend:
     image: sagar116/erp-frontend:latest
@@ -15,11 +59,22 @@ services:
       - VITE_API_URL=/api
     depends_on:
       - backend
+    networks:
+      - erp-network
   
   backend:
-    image: sagar116/erp-backend:latest
+    image: erp-api-test
     env_file:
       - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - erp-network
+
+volumes:
+  postgres_data:
+  pgadmin_data:
 
 networks:
   erp-network:
