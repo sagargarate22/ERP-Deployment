@@ -63,7 +63,7 @@ services:
       - erp-network
   
   backend:
-    image: erp-api-test
+    image: sagar116/erp-backend:latest
     env_file:
       - .env
     depends_on:
