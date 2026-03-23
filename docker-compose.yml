@@ -6,8 +6,6 @@ services:
       POSTGRES_DB: ${DB_NAME:-backend_db}
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -24,8 +22,6 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
     depends_on:
       - db
     networks:
@@ -36,8 +32,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: backend_redis
-    ports:
-      - "6379:6379"
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    restart: always
     networks:
       - erp-network
 
