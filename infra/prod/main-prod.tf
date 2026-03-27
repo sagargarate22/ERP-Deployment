@@ -1,0 +1,98 @@
+terraform {
+  required_providers {
+    contabo = {
+      source  = "contabo/contabo"
+      version = ">= 0.1.32"
+    }
+    godaddy = {
+      source  = "n3integration/godaddy"
+      version = ">= 1.9.1"
+    }
+  }
+}
+
+# 1. Provide Contabo Credentials
+provider "contabo" {
+  oauth2_client_id     = var.contabo_client_id
+  oauth2_client_secret = var.contabo_client_secret
+  oauth2_user          = var.contabo_api_user
+  oauth2_pass          = var.contabo_api_password
+}
+
+# 2. Provide GoDaddy Credentials
+provider "godaddy" {
+  key    = var.godaddy_api_key
+  secret = var.godaddy_api_secret
+}
+
+# 3. Register your SSH Public Key with Contabo
+resource "contabo_secret" "deploy_ssh_key" {
+  name  = "erp-deployment-key"
+  type  = "ssh"
+  value = var.public_ssh_key # The .pub key you generated
+}
+
+# 4. Create the Contabo VPS Instance
+resource "contabo_instance" "erp_server" {
+  display_name = "ERP-Prod"
+  product_id   = "vps_s_ssdv_10" 
+  region       = "de"
+  image_id     = "ubuntu-22.04"
+  ssh_keys     = [contabo_secret.deploy_ssh_key.id]
+
+  # The automation script runs on the first boot
+  user_data = <<-EOF
+              #!/bin/bash
+              apt-get update && 
+              apt-get install -y docker.io docker-compose git rclone
+              systemctl enable --now docker
+
+              # Setup rclone config for S3
+              mkdir -p /root/.config/rclone
+              cat <<EOC > /root/.config/rclone/rclone.conf
+              [contabo-s3]
+              type = s3
+              provider = Ceph
+              access_key_id = ${var.s3_access_key}
+              secret_access_key = ${var.s3_secret_key}
+              endpoint = ${var.s3_endpoint}
+              EOC
+
+              # setup initial bucket if not already exist
+              rclone mkdir contabo-s3:erp-prod-bucket
+
+              # Add public ssh key to the server so deploy pipeline can enter
+              mkdir -p /root/.ssh
+              echo "${var.public_ssh_key}" >> /root/.ssh/authorized_keys
+              chmod 600 /root/.ssh/authorized_keys
+
+              # Clone your private repo using your PAT
+              git clone https://${var.gh_pat}@://github.com{var.repo_path}.git /opt/erp
+              cd /opt/erp
+
+              # Initial Setup and SSL
+              chmod +x init-ssl.sh
+              ./init.sh
+              EOF
+}
+
+# 5. Automatically update GoDaddy DNS for ://yourcompany.com
+resource "godaddy_domain_record" "erp_dns" {
+  domain   = var.domain_name # Replace with your actual domain
+  
+  record {
+    name = "erp" # This creates the 'erp' subdomain
+    type = "A"
+    data = contabo_instance.erp_server.ip_address # Points to the new VPS IP
+    ttl  = 600
+  }
+}
+
+# Outputs for your reference
+output "new_vps_ip" {
+  value = contabo_instance.erp_server.ip_address
+}
+
+output "full_domain" {
+  value = "https://erp.${var.domain_name}"
+}

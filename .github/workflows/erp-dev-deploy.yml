@@ -1,9 +1,7 @@
 name: Deploy ERP
 
 on:
-  push:
-    branches:
-      - "main"
+  workflow_dispatch:
 
 concurrency:
   group: erp-deployment
@@ -28,12 +26,19 @@ jobs:
       - name: Deploy via SSH
         run: |
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
-            cd /opt/erp-system/ERP-Deployment
+            cd /opt/erp
 
+            # 1. Pull latest code changes
             git pull origin main
             
+            # 2. Update Environment variables
             echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
-            docker-compose down
+            
+            # 3. Pull new images and restart (Zero-Downtime)
+            # Using 'up -d' without 'down' keeps the site running while switching
             docker-compose pull
-            docker-compose up -d
+            docker-compose up -d --remove-orphans
+            
+            # 4. Clean up old unused Docker images to save space
+            docker image prune -f
           EOF

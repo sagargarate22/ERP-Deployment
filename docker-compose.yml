@@ -16,6 +16,25 @@ services:
     networks:
       - erp-network
 
+  db_backup:
+    image: prodrigestivill/postgres-backup-local
+    container_name: db_backup_worker
+    restart: unless-stopped
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - SCHEDULE=@daily        # Runs every midnight
+      - BACKUP_KEEP_DAYS=7     # Deletes local files older than 7 days
+      - BACKUP_SUFFIX=.sql
+    volumes:
+      - ./backups:/backups     # Maps to the host folder
+    depends_on:
+      - db
+    networks:
+      - erp-network
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: backend_pgadmin
@@ -48,9 +67,19 @@ services:
       - backend
     networks:
       - erp-network
+
+  # No Restart, Only run one time for ssl creation 
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    networks:
+      - erp-network
   
   frontend:
     image: sagar116/erp-frontend:latest
+    restart: unless-stopped
     environment:
       - VITE_API_URL=/api
     depends_on:
@@ -60,6 +89,7 @@ services:
   
   backend:
     image: sagar116/erp-backend:latest
+    restart: unless-stopped
     env_file:
       - .env
     depends_on:

@@ -1,0 +1,40 @@
+name: "Provision Contabo Infra"
+
+on:
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  terraform:
+    name: "Terraform Apply"
+    runs-on: ubuntu-latest
+    
+    env:
+      # Contabo API Secrets (Different from AWS)
+      TF_VAR_contabo_client_id: ${{ secrets.CONTABO_CLIENT_ID }}
+      TF_VAR_contabo_client_secret: ${{ secrets.CONTABO_CLIENT_SECRET }}
+      TF_VAR_contabo_api_user: ${{ secrets.CONTABO_API_USER }}
+      TF_VAR_contabo_api_password: ${{ secrets.CONTABO_API_PASS }}
+      
+      # Shared Secrets
+      TF_VAR_godaddy_api_key: ${{ secrets.GODADDY_API_KEY }}
+      TF_VAR_godaddy_api_secret: ${{ secrets.GODADDY_API_SECRET }}
+      TF_VAR_public_ssh_key: ${{ secrets.VM_SSH_PUBLIC_KEY }}
+      TF_VAR_gh_pat: ${{ secrets.GH_PAT }}
+      
+      # Application Specifics
+      TF_VAR_repo_path: "your-org/your-repo"
+      TF_VAR_domain_name: "yourcompany.com"
+      TF_VAR_s3_bucket_name: "erp-prod-bucket"
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
