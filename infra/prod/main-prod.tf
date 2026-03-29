@@ -41,51 +41,51 @@ resource "contabo_instance" "erp_server" {
   ssh_keys     = [contabo_secret.deploy_ssh_key.id]
 
   # The automation script runs on the first boot
-  user_data = <<-EOF
-              #!/bin/bash
-              set -e
-              apt-get update && 
-              apt-get install -y docker.io docker-compose-plugin git rclone ufw
+  user_data = <<-USERDATA
+#!/bin/bash
+set -e
+apt-get update && 
+apt-get install -y docker.io docker-compose-plugin git rclone ufw
               
-              systemctl enable --now docker
+systemctl enable --now docker
 
-              ufw allow OpenSSH
-              ufw allow 80
-              ufw allow 443
-              ufw --force enable
+ufw allow OpenSSH
+ufw allow 80
+ufw allow 443
+ufw --force enable
 
-              # Setup rclone config for S3
-              mkdir -p /root/.config/rclone
-              cat <<EOC > /root/.config/rclone/rclone.conf
-              [contabo-s3]
-              type = s3
-              provider = Ceph
-              access_key_id = ${var.s3_access_key}
-              secret_access_key = ${var.s3_secret_key}
-              endpoint = ${var.s3_endpoint}
-              EOC
+# Setup rclone config for S3
+mkdir -p /root/.config/rclone
+cat <<EOC > /root/.config/rclone/rclone.conf
+[contabo-s3]
+type = s3
+provider = Ceph
+access_key_id = ${var.s3_access_key}
+secret_access_key = ${var.s3_secret_key}
+endpoint = ${var.s3_endpoint}
+EOC
 
-              # setup initial bucket if not already exist
-              rclone mkdir contabo-s3:erp-prod-bucket || true
+# setup initial bucket if not already exist
+rclone mkdir contabo-s3:erp-prod-bucket || true
 
-              # Add public ssh key to the server so deploy pipeline can enter
-              mkdir -p /root/.ssh
-              echo "${var.public_ssh_key}" >> /root/.ssh/authorized_keys
-              chmod 600 /root/.ssh/authorized_keys
+# Add public ssh key to the server so deploy pipeline can enter
+mkdir -p /root/.ssh
+echo "${var.public_ssh_key}" >> /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
 
-              # Clone your private repo using your PAT
-              git clone https://${var.gh_pat}@github.com/${var.repo_path}.git /opt/erp || true
-              cd /opt/erp
+# Clone your private repo using your PAT
+git clone https://${var.gh_pat}@github.com/${var.repo_path}.git /opt/erp || true
+cd /opt/erp
 
-              echo "${var.env_file_content}" > .env
+echo "${var.env_file_content}" > .env
 
-              echo "Waiting for DNS propagation..."
-              sleep 120
+echo "Waiting for DNS propagation..."
+sleep 120
               
-              # Initial Setup and SSL
-              chmod +x init.sh
-              DB_USER=${var.db_user} DB_NAME=${var.db_name} DOMAIN_NAME=${var.domain_name} EMAIL="constructiveindia@gmail.com" ./init.sh
-              EOF
+# Initial Setup and SSL
+chmod +x init.sh
+DB_USER=${var.db_user} DB_NAME=${var.db_name} DOMAIN_NAME=${var.domain_name} EMAIL="constructiveindia@gmail.com" ./init.sh
+USERDATA
 }
 
 # 5. Automatically update GoDaddy DNS for ://yourcompany.com
