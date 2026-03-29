@@ -36,16 +36,23 @@ resource "contabo_secret" "deploy_ssh_key" {
 resource "contabo_instance" "erp_server" {
   display_name = "ERP-Prod"
   product_id   = "vps_s_ssdv_10" 
-  region       = "de"
+  region       = "IN"
   image_id     = "ubuntu-22.04"
   ssh_keys     = [contabo_secret.deploy_ssh_key.id]
 
   # The automation script runs on the first boot
   user_data = <<-EOF
               #!/bin/bash
+              set -e
               apt-get update && 
-              apt-get install -y docker.io docker-compose git rclone
+              apt-get install -y docker.io docker-compose-plugin git rclone ufw
+              
               systemctl enable --now docker
+
+              ufw allow OpenSSH
+              ufw allow 80
+              ufw allow 443
+              ufw --force enable
 
               # Setup rclone config for S3
               mkdir -p /root/.config/rclone
@@ -59,7 +66,7 @@ resource "contabo_instance" "erp_server" {
               EOC
 
               # setup initial bucket if not already exist
-              rclone mkdir contabo-s3:erp-prod-bucket
+              rclone mkdir contabo-s3:erp-prod-bucket || true
 
               # Add public ssh key to the server so deploy pipeline can enter
               mkdir -p /root/.ssh
@@ -67,12 +74,21 @@ resource "contabo_instance" "erp_server" {
               chmod 600 /root/.ssh/authorized_keys
 
               # Clone your private repo using your PAT
-              git clone https://${var.gh_pat}@://github.com{var.repo_path}.git /opt/erp
+              git clone https://${var.gh_pat}@github.com/${var.repo_path}.git /opt/erp || true
               cd /opt/erp
 
+              cat <<EOF > .env ${var.env_file_content}
+              EOF
+
+              echo "Waiting for DNS propagation..."
+              sleep 120
+              
               # Initial Setup and SSL
-              chmod +x init-ssl.sh
-              ./init.sh
+              chmod +x init.sh
+              DB_USER=${var.db_user} \
+              DB_NAME=${var.db_name} \
+              DOMAIN_NAME=${var.domain_name} \
+              EMAIL="constructiveindia@gmail.com" ./init.sh
               EOF
 }
 

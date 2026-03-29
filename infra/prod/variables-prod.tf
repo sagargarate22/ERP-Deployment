@@ -46,3 +46,37 @@ variable "repo_path" {
   description = "Format: username/repository-name"
   type        = string
 }
+
+variable "domain_name" {
+  description = "Domain Name"
+  type = string
+}
+
+# --- Database "Slots" ---
+variable "db_user" {
+  type = string
+}
+
+variable "db_name" {
+  type = string
+}
+
+# --- S3 / Object Storage "Slots" ---
+variable "s3_access_key" {
+  type      = string
+  sensitive = true # Hides the value from appearing in your terminal logs
+}
+
+variable "s3_secret_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "s3_endpoint" {
+  type = string
+}
+
+variable "env_file_content" {
+  type      = string
+  sensitive = true
+}

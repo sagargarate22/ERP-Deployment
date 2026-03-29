@@ -1,20 +1,7 @@
 #!/bin/bash
-DOMAIN="erp.yourcompany.com" 
-EMAIL="admin@yourcompany.com" # Ensure this is filled
-DATA_PATH="./data/certbot"
-
-# 1. Create Dummy Certs if they don't exist
-if [ ! -d "$DATA_PATH/conf/live/$DOMAIN" ]; then
-  echo "Creating dummy certificates..."
-  mkdir -p "$DATA_PATH/conf/live/$DOMAIN"
-  openssl req -x509 -nodes -newkey rsa:4096 -days 1 \
-    -keyout "$DATA_PATH/conf/live/$DOMAIN/privkey.pem" \
-    -out "$DATA_PATH/conf/live/$DOMAIN/fullchain.pem" \
-    -subj "/CN=localhost"
-fi
 
 # 2. Start Database and wait
-docker-compose up -d db
+docker compose up -d db
 echo "Waiting for database to be ready..."
 until docker exec backend_db pg_isready -U ${DB_USER}; do
   sleep 2
@@ -23,7 +10,7 @@ done
 # 3. Handle S3 Restore (First-time safe)
 mkdir -p ./backups
 echo "Checking S3 for backups..."
-rclone copy contabo-s3:my-bucket/backups ./backups --max-depth 1 2>/dev/null
+rclone copy contabo-s3:erp-prod-bucket/backups ./backups --max-depth 1 2>/dev/null
 
 # Find the newest .sql file
 LATEST_BACKUP=$(ls -t ./backups/*.sql 2>/dev/null | head -1)
@@ -36,15 +23,15 @@ else
 fi
 
 # 4. Start the full application
-docker-compose up -d
+docker compose up -d
 
 # 5. Request real SSL (Nginx must be running for this)
 echo "Requesting real SSL..."
-docker-compose run --rm certbot certonly --webroot -w /var/www/certbot \
-    -d $DOMAIN --email $EMAIL --agree-tos --no-eff-email --force-renewal
+docker compose run --rm certbot certonly --webroot -w /var/www/certbot \
+    -d ${DOMAIN} --email ${EMAIL} --agree-tos --no-eff-email --force-renewal
 
 # 6. Reload Nginx
-docker-compose exec getway nginx -s reload
+docker compose exec gateway nginx -s reload
 
 # 7. SETUP CRON JOBS (The safe way that preserves existing jobs)
 echo "Setting up Cron jobs..."
@@ -52,8 +39,9 @@ echo "Setting up Cron jobs..."
 # Clear existing crontab to avoid duplicates on re-runs
 crontab -r 2>/dev/null
 
-# Add SSL Renewal (Mondays at 4:00 AM)
-(crontab -l 2>/dev/null; echo "0 4 * * 1 cd /opt/erp && docker-compose run --rm certbot renew && docker-compose exec -T getway nginx -s reload") | crontab -
+crontab -r 2>/dev/null
 
-# Add S3 Sync (Daily at 4:05 AM - 5 mins after Docker backup)
-(crontab -l 2>/dev/null; echo "5 4 * * * rclone sync /opt/erp/backups contabo-s3:my-bucket/backups") | crontab -
+(
+echo "0 4 * * 1 cd /opt/erp && docker compose run --rm certbot renew && docker compose exec -T gateway nginx -s reload"
+echo "5 4 * * * rclone sync /opt/erp/backups contabo-s3:erp-prod-bucket/backups"
+) | crontab -
