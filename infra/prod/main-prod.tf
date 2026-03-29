@@ -95,16 +95,20 @@ resource "godaddy_domain_record" "erp_dns" {
   record {
     name = "erp" # This creates the 'erp' subdomain
     type = "A"
-    data = contabo_instance.erp_server.ip_address # Points to the new VPS IP
+    data = contabo_instance.erp_server.ip_config[0].v4[0].ip # Points to the new VPS IP
     ttl  = 600
   }
 }
 
 # Outputs for your reference
 output "new_vps_ip" {
-  value = contabo_instance.erp_server.ip_address
+  value = contabo_instance.erp_server.ip_config[0].v4[0].ip
 }
 
 output "full_domain" {
   value = "https://erp.${var.domain_name}"
+}
+
+output "debug_ip_config" {
+  value = contabo_instance.erp_server.ip_config
 }
