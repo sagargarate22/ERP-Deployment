@@ -77,18 +77,14 @@ resource "contabo_instance" "erp_server" {
               git clone https://${var.gh_pat}@github.com/${var.repo_path}.git /opt/erp || true
               cd /opt/erp
 
-              cat <<EOF > .env ${var.env_file_content}
-              EOF
+              echo "${var.env_file_content}" > .env
 
               echo "Waiting for DNS propagation..."
               sleep 120
               
               # Initial Setup and SSL
               chmod +x init.sh
-              DB_USER=${var.db_user} \
-              DB_NAME=${var.db_name} \
-              DOMAIN_NAME=${var.domain_name} \
-              EMAIL="constructiveindia@gmail.com" ./init.sh
+              DB_USER=${var.db_user} DB_NAME=${var.db_name} DOMAIN_NAME=${var.domain_name} EMAIL="constructiveindia@gmail.com" ./init.sh
               EOF
 }
 
