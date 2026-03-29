@@ -33,7 +33,7 @@ resource "contabo_secret" "deploy_ssh_key" {
 }
 
 data "contabo_image" "ubuntu" {
-  id = "ubuntu-22-04"
+  id = "ubuntu-22.04"
 }
 
 # 4. Create the Contabo VPS Instance
