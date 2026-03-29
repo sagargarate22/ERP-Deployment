@@ -32,12 +32,16 @@ resource "contabo_secret" "deploy_ssh_key" {
   value = var.public_ssh_key # The .pub key you generated
 }
 
+data "contabo_image" "ubuntu" {
+  id = "ubuntu-22-04"
+}
+
 # 4. Create the Contabo VPS Instance
 resource "contabo_instance" "erp_server" {
   display_name = "ERP-Prod"
   product_id   = "vps_s_ssdv_10" 
   region       = "IN"
-  image_id     = "ubuntu-22.04"
+  image_id     = data.contabo_image.ubuntu.id
   ssh_keys     = [contabo_secret.deploy_ssh_key.id]
 
   # The automation script runs on the first boot
@@ -56,14 +60,12 @@ ufw --force enable
 
 # Setup rclone config for S3
 mkdir -p /root/.config/rclone
-cat <<EOC > /root/.config/rclone/rclone.conf
-[contabo-s3]
-type = s3
-provider = Ceph
-access_key_id = ${var.s3_access_key}
-secret_access_key = ${var.s3_secret_key}
-endpoint = ${var.s3_endpoint}
-EOC
+echo "[contabo-s3]" > /root/.config/rclone/rclone.conf
+echo "type = s3" >> /root/.config/rclone/rclone.conf
+echo "provider = Ceph" >> /root/.config/rclone/rclone.conf
+echo "access_key_id = ${var.s3_access_key}" >> /root/.config/rclone/rclone.conf
+echo "secret_access_key = ${var.s3_secret_key}" >> /root/.config/rclone/rclone.conf
+echo "endpoint = ${var.s3_endpoint}" >> /root/.config/rclone/rclone.conf
 
 # setup initial bucket if not already exist
 rclone mkdir contabo-s3:erp-prod-bucket || true
