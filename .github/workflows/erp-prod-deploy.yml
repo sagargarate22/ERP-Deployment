@@ -1,4 +1,4 @@
-name: Deploy ERP
+name: Deploy ERP Prod
 
 on:
   workflow_dispatch:
