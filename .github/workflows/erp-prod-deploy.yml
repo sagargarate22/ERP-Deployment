@@ -36,8 +36,8 @@ jobs:
             
             # 3. Pull new images and restart (Zero-Downtime)
             # Using 'up -d' without 'down' keeps the site running while switching
-            docker-compose pull
-            docker-compose up -d --remove-orphans
+            docker compose pull
+            docker compose up -d --remove-orphans
             
             # 4. Clean up old unused Docker images to save space
             docker image prune -f
