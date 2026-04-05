@@ -22,7 +22,7 @@ services:
         max-file: "3"
 
   db_backup:
-    image: prodrigestivill/postgres-backup-local:15
+    image: prodrigestivill/postgres-backup-local:16
     container_name: db_backup_worker
     restart: unless-stopped
     environment:
