@@ -91,6 +91,7 @@ services:
       - backend
     networks:
       - erp-network
+      - shared-proxy-network
     logging:
       options:
         max-size: "10m"
@@ -144,4 +145,6 @@ volumes:
 networks:
   erp-network:
     driver: bridge
-    
+
+  shared-proxy-network:
+    external: true
